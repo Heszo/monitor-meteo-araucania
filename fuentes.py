@@ -11,6 +11,7 @@ horaria, en pasos horarios. El valor de la hora T es:
 """
 import os
 import time
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -376,11 +377,17 @@ class OpenMeteoError(RuntimeError):
 
 
 def _get_json(url, params, intentos=4, timeout=60):
-    """GET con reintentos ante 429, errores 5xx, cortes y respuestas que no son JSON."""
+    """GET con reintentos ante 429, errores 5xx, cortes y respuestas que no son JSON. Ante el
+    límite por minuto de Open-Meteo se espera un minuto; ante el límite por hora no se reintenta."""
     ultimo = ""
     for k in range(intentos):
         try:
             r = requests.get(url, params=params, headers=UA, timeout=timeout)
+            if r.status_code == 429 and "Hourly" in r.text:
+                raise OpenMeteoError(f"{url.split('/')[2]}: límite de consultas por hora agotado")
+            if r.status_code == 429 and "Minutely" in r.text and k < intentos - 1:
+                time.sleep(61)
+                continue
             if r.status_code == 429 or r.status_code >= 500:
                 ultimo = f"HTTP {r.status_code}"
             else:
@@ -466,8 +473,10 @@ def ensamble(puntos, pasado, futuro):
 def percentiles(miembros, qs=(10, 50, 90)):
     if miembros is None or miembros.empty:
         return None
-    return pd.DataFrame({f"p{q}": np.nanpercentile(miembros.values, q, axis=1) for q in qs},
-                        index=miembros.index)
+    with warnings.catch_warnings():  # horas sin ningún miembro (el final del horizonte): quedan en NaN
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return pd.DataFrame({f"p{q}": np.nanpercentile(miembros.values, q, axis=1) for q in qs},
+                            index=miembros.index)
 
 
 def resumen_pronostico(det, ens):

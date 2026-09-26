@@ -18,13 +18,15 @@ from datetime import datetime, timezone
 import fuentes as F
 
 POR_LOTE = 8             # puntos por consulta (una respuesta del ensamble IFS de 8 puntos pesa ~4 MB)
-EN_PARALELO = 2          # lotes a la vez
+EN_PARALELO = 2          # lotes de modelos a la vez
+PAUSA_ENSAMBLE_S = 60    # un lote de ensamble (8 nodos × 143 miembros) roza el límite de 600 consultas por minuto
 PRESUPUESTO_S = 20 * 60  # pasado este tiempo se publica lo que haya (el job corta a los 40 min)
 
 
-def en_lotes(ids, funcion, inicio, nombre):
+def en_lotes(ids, funcion, inicio, nombre, pausa=0):
     """{id: resultado} de funcion(puntos) aplicada por lotes a los sitios 'ids', con una segunda
-    pasada para los lotes que fallaron. Devuelve también los ids que quedaron sin respuesta."""
+    pasada para los lotes que fallaron. Con pausa > 0 los lotes van de a uno, separados por 'pausa'
+    segundos. Devuelve también los ids que quedaron sin respuesta."""
     hechos, pendientes = {}, list(ids)
 
     def uno(lote):
@@ -41,8 +43,15 @@ def en_lotes(ids, funcion, inicio, nombre):
         if pasada == 2:
             time.sleep(60)
         lotes = [pendientes[k:k + POR_LOTE] for k in range(0, len(pendientes), POR_LOTE)]
-        with ThreadPoolExecutor(max_workers=EN_PARALELO) as pool:
-            resultados = list(pool.map(uno, lotes))
+        if pausa:
+            resultados = []
+            for k, lote in enumerate(lotes):
+                if k:
+                    time.sleep(pausa)
+                resultados.append(uno(lote))
+        else:
+            with ThreadPoolExecutor(max_workers=EN_PARALELO) as pool:
+                resultados = list(pool.map(uno, lotes))
         pendientes = []
         for lote, res, err in resultados:
             nombres = ", ".join(F.SITIO[i]["nombre"] for i in lote)
@@ -61,7 +70,8 @@ def main(carpeta):
     det, sin_det = en_lotes([s["id"] for s in F.SITIOS], lambda p: F.deterministas(p, pasado, futuro),
                             inicio, "modelos")
     nodos = sorted(set(F.NODO.values()))
-    ens, sin_ens = en_lotes(nodos, lambda p: F.ensamble(p, pasado, futuro), inicio, "ensamble")
+    ens, sin_ens = en_lotes(nodos, lambda p: F.ensamble(p, pasado, futuro), inicio, "ensamble",
+                            pausa=PAUSA_ENSAMBLE_S)
 
     # un sitio sin ensamble se publica igual, solo con los 7 modelos (sin banda ni miembros de lluvia)
     por_sitio = {sid: F.resumen_pronostico(d, ens.get(F.NODO[sid], {})) for sid, d in det.items()}

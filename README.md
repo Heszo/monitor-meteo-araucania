@@ -89,7 +89,8 @@ pedirlo en los 72 sitios agota el límite horario en una sola corrida. Por eso:
   más cercana al centro de la celda: 19 nodos en vez de 72 (`NODO` en `fuentes.py`).
 - Open-Meteo acepta varias coordenadas en una misma consulta: se piden lotes de 8 puntos.
 
-Una corrida cuesta unas 2000 consultas ponderadas y tarda pocos minutos.
+Una corrida tarda unos 3 minutos: los lotes del ensamble van de a uno, separados por un minuto, para
+no pasar el límite de 600 consultas por minuto.
 
 Para forzar una actualización: pestaña *Actions* → *Actualizar pronósticos* → *Run workflow*.
 GitHub pausa las Actions programadas de un repositorio público tras 60 días sin actividad; si pasa,
