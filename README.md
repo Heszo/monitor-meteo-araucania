@@ -24,6 +24,11 @@ Se actualiza sola y no necesita claves ni base de datos: las observaciones se de
 | **Meteograma** | Las 6 variables apiladas en un mismo eje de tiempo, para un modelo o la mediana de los modelos elegidos. |
 | **Mapa de estaciones** | Última medición (o lluvia acumulada en las últimas N horas) de cada estación sobre imagen satelital. |
 
+Cada gráfico tiene debajo los botones **PNG** y **PDF** para guardarlo: PNG a doble resolución o PDF
+vectorial, con fondo blanco y la fuente de los datos. La imagen se genera al hacer clic (tarda 2–4 s)
+con [Kaleido](https://github.com/plotly/Kaleido), que usa Chrome: en Streamlit Cloud lo instala
+`packages.txt` (`chromium`); en tu computador basta con tener Chrome o Chromium.
+
 Los modelos se consultan en las coordenadas del sitio elegido arriba, en «Sitio» (se puede escribir
 para buscar entre las 72 estaciones).
 
@@ -109,7 +114,8 @@ tests/                     pruebas de humo con st.testing.AppTest
 .github/workflows/         Actions: pronósticos cada hora y pruebas en cada push
 .streamlit/                tema, archivos estáticos y configuración de la caché
 static/                    imagen de portada (Esri World Imagery) y logos de MetGeo, servidos en app/static/
-requirements.txt           dependencias
+requirements.txt           dependencias de Python
+packages.txt               dependencias del sistema en Streamlit Cloud (chromium, para exportar PNG/PDF)
 ```
 
 ## Velocidad

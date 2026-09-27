@@ -14,6 +14,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 import fuentes as F
@@ -146,6 +147,42 @@ def contexto():
 # ------------------------------------------------------------------ utilidades de gráficos y texto
 def barra(boton="resetScale2d"):
     return {"displayModeBar": True, "displaylogo": False, "modeBarButtons": [[boton]]}
+
+
+PIE = ("MetGeo Araucanía · metgeo-araucania.streamlit.app · observado: VIPNet (DGA/MOP) y METAR SCQP "
+       "(NOAA AWC) · pronóstico: Open-Meteo")
+
+
+def exporta(fig, formato, ancho=1400):
+    """El gráfico como PNG (a doble resolución) o PDF vectorial, con fondo blanco y la fuente
+    arriba a la derecha. Lo dibuja Kaleido con Chrome; en Streamlit Cloud, el chromium de
+    packages.txt."""
+    f = go.Figure(fig)
+    m = f.layout.margin
+    arriba = (m.t or 0) + 26
+    f.update_layout(template="plotly_white", paper_bgcolor="white", margin=dict(t=arriba))
+    f.add_annotation(text=PIE, xref="paper", yref="paper", x=1, y=1, xanchor="right", yanchor="bottom",
+                     yshift=arriba - 20, showarrow=False, font=dict(size=10, color="#777"))
+    return f.to_image(format=formato, width=ancho, height=(f.layout.height or 500) + 26,
+                      scale=2 if formato == "png" else 1)
+
+
+def grafico(fig, nombre, key=None, boton="resetScale2d", donde=None):
+    """st.plotly_chart y, debajo, botones para guardar el gráfico en PNG o PDF. La imagen se
+    genera recién al hacer clic (data diferida), así no cuesta nada mientras nadie la pide."""
+    donde = donde or st.container()
+    with donde:
+        st.plotly_chart(fig, config=barra(boton), key=key)
+        c = st.session_state.get("_ctx")
+        base = "_".join(filter(None, ["metgeo_araucania", nombre, c and c.sitio["id"],
+                                      f"{F.ahora_local():%Y%m%d_%H%M}"]))
+        with st.container(horizontal=True, gap="small", horizontal_alignment="right"):
+            for formato, mime in (("png", "image/png"), ("pdf", "application/pdf")):
+                st.download_button(formato.upper(), lambda formato=formato: exporta(fig, formato),
+                                   file_name=f"{base}.{formato}", mime=mime, type="tertiary",
+                                   icon=":material/download:", on_click="ignore",
+                                   key=f"baja_{key or nombre}_{formato}",
+                                   help=f"Guardar este gráfico en {formato.upper()}")
 
 
 def linea_ahora(fig, ahora, xref="x", yref="paper"):

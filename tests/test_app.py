@@ -75,3 +75,14 @@ def test_catalogo():
     assert set(F.NODO) == set(ids) and set(F.NODO.values()) <= set(ids)
     for s in F.SITIOS:
         assert s["grupo"] in F.GRUPOS and set(s["vars"]) <= set(F.VARIABLES), s["id"]
+
+
+def test_guardar_graficos():
+    import plotly.io as pio
+
+    import comun as C
+    at = abre("comparar", sitio="temuco_centro")
+    assert {b.label for b in at.get("download_button")} == {"PNG", "PDF"}
+    fig = pio.from_json(at.get("plotly_chart")[0].proto.spec)
+    assert C.exporta(fig, "pdf")[:5] == b"%PDF-"
+    assert C.exporta(fig, "png")[:4] == b"\x89PNG"

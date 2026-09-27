@@ -103,7 +103,7 @@ if not temp.empty:
                      margin=dict(l=10, r=10, t=45, b=10), hovermode="x unified", bargap=0, barmode="overlay",
                      legend=dict(orientation="h", y=-0.25, yanchor="top"))
     fp.update_xaxes(**EJE_T)
-    st.plotly_chart(fp, config=barra(), key="adelanto")
+    C.grafico(fp, "ayer_hoy_3dias", key="adelanto")
     st.caption("El sitio se cambia arriba, en «Sitio». La línea punteada roja marca la hora actual.")
 
 # --- qué se puede hacer
@@ -127,7 +127,7 @@ with col_red:
                                      text=[x["nombre"] for x in ss], hovertemplate="%{text}<extra></extra>"))
     fred.update_layout(map=C.MAPA | dict(zoom=6.6), margin=dict(l=0, r=0, t=0, b=0), height=420,
                        legend=dict(orientation="h", y=0.02, x=0.02, bgcolor="rgba(255,255,255,.85)"))
-    st.plotly_chart(fred, config=barra("resetViewMap"), key="mapa_red")
+    C.grafico(fred, "red_estaciones", key="mapa_red", boton="resetViewMap")
     st.caption(f"La red: {len(VIP)} estaciones VIPNet y el aeropuerto La Araucanía, agrupadas en costa "
                "(con la cordillera de Nahuelbuta), valle y cordillera. Imagen: Esri World Imagery.")
 with col_pasos:

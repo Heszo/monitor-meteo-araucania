@@ -71,7 +71,7 @@ fig.update_layout(title=f"{V['nombre']}{' acumulada' if acumular else ''} ({unid
 if var == "direccion":
     fig.update_yaxes(range=[0, 360], tickvals=[0, 90, 180, 270, 360], ticktext=["N", "E", "S", "O", "N"])
 fig.update_xaxes(**EJE_T)
-st.plotly_chart(fig, config=barra())
+C.grafico(fig, f"comparar_{var}")
 if obs is None:
     disponibles = [F.SITIO[s["id"]]["nombre"] for s in F.SITIOS if var in s["vars"]]
     st.info(icon=":material/sensors_off:", body=f"{sitio['nombre']} no mide {V['nombre'].lower()}. "
@@ -109,7 +109,7 @@ if obs is not None and len(obs) and not acumular:
             text=[f"{v:.{dec}f}" for v in tabla.mae], textposition="outside"))
         fb.update_layout(title=f"Error absoluto medio ({V['unidad']}) · menor es mejor", height=300,
                          margin=dict(l=10, r=30, t=40, b=10), yaxis=dict(autorange="reversed"))
-        col_g.plotly_chart(fb, config=barra())
+        C.grafico(fb, f"error_{var}", donde=col_g)
         st.caption("Sesgo > 0: el modelo sobrestima. Los días pasados de Open-Meteo son pronósticos de "
                    "corto plazo de las corridas recientes, no reanálisis. El modelo se compara en el punto "
                    "de grilla más cercano a la estación, así que parte del error es de representatividad.")

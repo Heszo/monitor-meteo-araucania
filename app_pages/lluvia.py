@@ -55,7 +55,7 @@ with col_mapa:
         textposition="middle right", textfont=dict(color="white", size=11),
         hovertemplate="%{customdata}: %{text} mm<extra></extra>"))
     fmap.update_layout(map=C.MAPA | dict(zoom=6.9), margin=dict(l=0, r=0, t=0, b=0), height=520, showlegend=False)
-    st.plotly_chart(fmap, config=barra("resetViewMap"), key="mapa_lluvia")
+    C.grafico(fmap, "lluvia_mapa", key="mapa_lluvia", boton="resetViewMap")
     st.caption("Colores: < 25 · 25–50 · 50–75 · 75–100 · 100–150 · > 150 mm. Imagen: Esri World Imagery.")
     opciones = {"Grupos (costa, valle y cordillera)": None} | {s["nombre"]: s["id"] for s in activas}
     boton = st.selectbox("Ver", list(opciones), key="estacion", bind="query-params",
@@ -88,7 +88,7 @@ with col_graf:
         fa.update_layout(title="Precipitación por hora (mm)", height=360, margin=dict(l=10, r=10, t=40, b=10),
                          bargap=0, legend=dict(orientation="h", y=-.3, yanchor="top"), hovermode="x unified")
         fa.update_xaxes(**EJE_T)
-        st.plotly_chart(fa, config=barra(), key="hist_lluvia")
+        C.grafico(fa, "lluvia_horaria", key="hist_lluvia")
 
         A = F.percentiles(P.fillna(0).cumsum())
         fb = go.Figure()
@@ -108,7 +108,7 @@ with col_graf:
                          height=290, margin=dict(l=10, r=10, t=60, b=10), showlegend=False,
                          hovermode="x unified")
         fb.update_xaxes(**EJE_T)
-        st.plotly_chart(fb, config=barra(), key="acum_lluvia")
+        C.grafico(fb, "lluvia_acumulada", key="acum_lluvia")
 
 if P is not None and not P.empty:
     st.markdown("**Lluvia esperada cada 6 horas** (mediana del pronóstico; rango p10–p90)")

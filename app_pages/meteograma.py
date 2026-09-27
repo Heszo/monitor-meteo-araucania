@@ -87,7 +87,7 @@ fm.update_layout(height=1300, hovermode="x unified", margin=dict(l=10, r=10, t=7
 fm.update_layout(legend_y=1.035)
 fm.update_xaxes(**EJE_T, showgrid=True)
 fm.update_xaxes(showticklabels=True, row=len(filas), col=1)
-st.plotly_chart(fm, config=barra())
+C.grafico(fm, "meteograma")
 faltan = [F.VARIABLES[v]["nombre"].lower() for v in filas if v not in sitio["vars"]]
 if faltan:
     st.caption(f"{sitio['nombre']} no mide: {', '.join(faltan)} (solo pronóstico en esos paneles).")

@@ -53,7 +53,7 @@ else:
         hovertemplate="%{customdata}: %{text} " + unidad_m + "<extra></extra>"))
     fmap.update_layout(map=C.MAPA | dict(zoom=7.2), margin=dict(l=0, r=0, t=0, b=0), height=620)
     col_map, col_tab = st.columns([3, 2])
-    col_map.plotly_chart(fmap, config=barra("resetViewMap"))
+    C.grafico(fmap, f"mapa_{var_m}", boton="resetViewMap", donde=col_map)
     col_tab.dataframe(dm[["Estación", "Grupo", "valor", "Hora", "Fuente"]]
                       .rename(columns={"valor": f"{Vm['nombre']} ({unidad_m})"}).sort_values("Grupo"),
                       hide_index=True, width="stretch",
