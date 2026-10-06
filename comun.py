@@ -9,6 +9,7 @@ servidor, así que casi nadie espera una descarga. Para que eso funcione las
 claves de caché son fijas: se pide siempre la ventana máxima y se recorta
 después.
 """
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -32,9 +33,53 @@ VIEJO = pd.Timedelta(hours=3)
 INSTAGRAM = "https://www.instagram.com/metgeo.spa/"
 LINKEDIN = "https://www.linkedin.com/company/metgeo-spa/"
 REPO_URL = f"https://github.com/{F.REPO}"
-# vista de los mapas: toda la región, de Angol a Puesco y de la costa a la cordillera
-MAPA = dict(style="white-bg", center=dict(lat=-38.65, lon=-72.3),
-            layers=[dict(sourcetype="raster", source=[F.ESRI], below="traces")])
+METGEO = "https://metgeo.cl"
+NEWSLETTER = "https://metgeo-newsletter.metgeo.workers.dev/"
+# límites comunales (BCN, simplificados a ~400 m): se dibujan en todos los mapas para ubicar las estaciones
+COMUNAS = json.loads((RAIZ / "static" / "comunas_araucania.geojson").read_text(encoding="utf-8"))
+NOMBRES_COMUNAS = [f["properties"]["comuna"] for f in COMUNAS["features"]]
+# mapas base: imagen satelital o calles (OpenStreetMap). Cada uno con el color
+# de los límites comunales y del texto de las estaciones que se lee bien encima.
+BASES = {
+    "satelite": dict(nombre="Satélite", teselas=F.ESRI, linea="rgba(255,255,255,.35)", texto="white",
+                     credito="Esri World Imagery"),
+    "calles": dict(nombre="Calles", teselas=F.OSM, linea="rgba(90,60,120,.35)", texto="#1a1a1a",
+                   credito="© colaboradores de OpenStreetMap"),
+}
+
+
+# Esquinas redondeadas y un filete gris para los mapas (MapLibre dibuja un rectángulo de esquinas vivas).
+MARCO_MAPA = "rgba(128,128,128,.45)"
+CSS_MAPAS = f"""<style>
+.stPlotlyChart .maplibregl-map {{ border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px {MARCO_MAPA}; }}
+</style>"""
+
+
+def base_actual():
+    return st.session_state.get("mapa_base") or "satelite"
+
+
+def elige_mapa_base():
+    """Control «Mapa base»; la elección se comparte entre páginas."""
+    return st.segmented_control("Mapa base", list(BASES), default="satelite", required=True, key="mapa_base",
+                                persist_state="session", format_func=lambda k: BASES[k]["nombre"])
+
+
+def mapa(**extra):
+    """layout.map con el mapa base elegido y los límites comunales; extra: center, zoom, capas_extra."""
+    b = BASES[base_actual()]
+    capas = [dict(sourcetype="raster", source=[b["teselas"]], below="traces"),
+             dict(sourcetype="geojson", source=COMUNAS, type="line", color=b["linea"], line=dict(width=1),
+                  below="traces"), *extra.pop("capas_extra", [])]
+    return dict(style="white-bg", center=dict(lat=-38.65, lon=-72.3), layers=capas) | extra
+
+
+def texto_mapa():
+    return BASES[base_actual()]["texto"]
+
+
+def credito_mapa():
+    return BASES[base_actual()]["credito"]
 
 
 # ------------------------------------------------------------------ cargas con caché
@@ -60,10 +105,34 @@ def carga_vivo(lat, lon):
     return F.pronostico_vivo(lat, lon, F.DIAS_PUBLICADOS, F.DIAS_PUBLICADOS)
 
 
+@st.cache_data(ttl="15m", refresh_mode="background", show_spinner="Leyendo la grilla de los mapas de superficie…")
+def carga_grilla_publicada():
+    return F.lee_grilla()
+
+
+@st.cache_data(ttl="1h", show_spinner="Consultando la grilla en Open-Meteo en vivo (tarda unos segundos)…")
+def carga_grilla_viva():
+    return F.grilla()
+
+
+def grilla():
+    """(tabla, origen) de la grilla regional: la copia publicada y, si falta, Open-Meteo en vivo.
+    (None, error) si ninguna responde."""
+    try:
+        return carga_grilla_publicada(), "copia publicada"
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        return carga_grilla_viva(), "Open-Meteo en vivo"
+    except Exception as ex:  # noqa: BLE001
+        return None, str(ex)
+
+
 def calienta_caches():
     """La llama app.py al arrancar y cada pocos minutos: con las entradas frescas es
     casi gratis; con las vencidas dispara su refresco en segundo plano."""
-    for f, args in [(carga_publicados, ()), (carga_metar, ()), *[(carga_vipnet, (v,)) for v in VARS_VIPNET]]:
+    for f, args in [(carga_publicados, ()), (carga_metar, ()), (carga_grilla_publicada, ()),
+                    *[(carga_vipnet, (v,)) for v in VARS_VIPNET]]:
         f(*args)
 
 
@@ -167,12 +236,13 @@ def exporta(fig, formato, ancho=1400):
                       scale=2 if formato == "png" else 1)
 
 
-def grafico(fig, nombre, key=None, boton="resetScale2d", donde=None):
+def grafico(fig, nombre, key=None, boton="resetScale2d", donde=None, **kw):
     """st.plotly_chart y, debajo, botones para guardar el gráfico en PNG o PDF. La imagen se
-    genera recién al hacer clic (data diferida), así no cuesta nada mientras nadie la pide."""
+    genera recién al hacer clic (data diferida), así no cuesta nada mientras nadie la pide.
+    'kw' pasa directo a st.plotly_chart (on_select, selection_mode)."""
     donde = donde or st.container()
     with donde:
-        st.plotly_chart(fig, config=barra(boton), key=key)
+        st.plotly_chart(fig, config=barra(boton), key=key, **kw)
         c = st.session_state.get("_ctx")
         base = "_".join(filter(None, ["metgeo_araucania", nombre, c and c.sitio["id"],
                                       f"{F.ahora_local():%Y%m%d_%H%M}"]))
@@ -190,6 +260,46 @@ def linea_ahora(fig, ahora, xref="x", yref="paper"):
     x = pd.Timestamp(ahora).isoformat()
     fig.add_shape(type="line", x0=x, x1=x, y0=0, y1=1, xref=xref, yref=yref,
                   line=dict(color=ROJO, width=1.4, dash="dot"))
+
+
+def comuna(nombre):
+    """El polígono (GeoJSON) de una comuna."""
+    return COMUNAS["features"][NOMBRES_COMUNAS.index(nombre)]
+
+
+def vista_comuna(nombre, ancho=800, alto=620):
+    """Centro y zoom del mapa que encuadran la comuna, con un margen alrededor."""
+    lon, lat = np.array(comuna(nombre)["geometry"]["coordinates"][0]).T
+    dlon = (lon.max() - lon.min()) * 1.5
+    dlat = (lat.max() - lat.min()) * 1.5 / np.cos(np.deg2rad(lat.mean()))  # Mercator estira la latitud
+    zoom = min(np.log2(ancho * 360 / (512 * dlon)), np.log2(alto * 360 / (512 * dlat)))
+    return dict(center=dict(lat=float(lat.mean()), lon=float(lon.mean())), zoom=float(np.clip(zoom, 6, 11)))
+
+
+@st.cache_data(show_spinner=False)
+def grilla_comunas(paso=0.02):
+    """Puntos cada 'paso' grados dentro de la región y la comuna de cada uno (DataFrame lat, lon, comuna).
+    Sirve para pinchar el mapa en cualquier parte: Plotly solo informa clics sobre puntos."""
+    lon, lat = np.meshgrid(np.arange(-73.55, -70.8, paso), np.arange(-39.65, -37.55, paso))
+    lon, lat = lon.ravel(), lat.ravel()
+    comuna_de = np.full(lon.size, None, dtype=object)
+    for f in COMUNAS["features"]:
+        x, y = np.array(f["geometry"]["coordinates"][0]).T
+        x0, y0, x1, y1 = x, y, np.roll(x, -1), np.roll(y, -1)
+        # rayo hacia el este: dentro si cruza un número impar de lados
+        cruza = ((y0[:, None] > lat) != (y1[:, None] > lat)) & (
+            lon < (x1 - x0)[:, None] * (lat - y0[:, None]) / np.where(y1 == y0, 1e-12, y1 - y0)[:, None] + x0[:, None])
+        comuna_de[cruza.sum(axis=0) % 2 == 1] = f["properties"]["comuna"]
+    dentro = comuna_de != None  # noqa: E711
+    return pd.DataFrame({"lat": lat[dentro], "lon": lon[dentro], "comuna": comuna_de[dentro]})
+
+
+def resalta_comuna(nombre):
+    """Capas de mapa que rellenan y remarcan una comuna."""
+    geo = comuna(nombre)
+    return [dict(sourcetype="geojson", source=geo, type="fill", color="rgba(255,214,0,.18)", below="traces"),
+            dict(sourcetype="geojson", source=geo, type="line", color="#FFD600", line=dict(width=3),
+                 below="traces")]
 
 
 def fmt(v, dec, unidad=""):
@@ -247,7 +357,7 @@ def metricas_ahora(c):
 
     if horas:
         h = max(horas)
-        st.caption(f"Ahora en {F.etiqueta(sitio)} · última medición a las {h:%H:%M} del {h:%d/%m} "
+        st.caption(f"Ahora en {F.etiqueta(sitio)}, comuna de {sitio['comuna']} · última medición a las {h:%H:%M} del {h:%d/%m} "
                    "(hora de Chile). «—»: sin medición de esa variable en esta estación.")
     else:
         st.caption(f"Sin mediciones recientes de {F.etiqueta(sitio)}.")
@@ -259,14 +369,39 @@ def metricas_ahora(c):
 
 
 # ------------------------------------------------------------------ controles
-def controles():
+SITIO_INICIAL = "temuco_centro"
+
+
+def etiqueta_sitio(i):
+    return f"{F.etiqueta(F.SITIO[i])} · {F.SITIO[i]['comuna']}"
+
+
+def _al_cambiar_comuna():
+    """Otra comuna en «Ahora mismo»: el sitio pasa a ser su primera estación (Temuco Centro en Temuco)."""
+    ids = [s["id"] for s in F.SITIOS if s["comuna"] == st.session_state["ahora_comuna"]]
+    st.session_state["sitio"] = SITIO_INICIAL if SITIO_INICIAL in ids else ids[0]
+
+
+def controles(por_comuna=False):
     """Barra de controles (reemplaza a la barra lateral): el sitio a la vista y el resto dentro de
     "Ajustes". Arma y devuelve el contexto de la corrida. Sitio y días quedan en la URL para
-    compartir la vista; modelos y banda se conservan al cambiar de página."""
+    compartir la vista; modelos y banda se conservan al cambiar de página. Con 'por_comuna' (el Home)
+    se elige primero la comuna y «Sitio» lista solo sus estaciones. Sin otra indicación, Temuco Centro."""
+    if "sitio" not in st.session_state:  # primera vez: el de la URL compartida o Temuco Centro
+        por_etiqueta = {etiqueta_sitio(s["id"]): s["id"] for s in F.SITIOS}
+        st.session_state["sitio"] = por_etiqueta.get(st.query_params.get("sitio"), SITIO_INICIAL)
+    ids = [s["id"] for s in F.SITIOS]
     with st.container(horizontal=True, vertical_alignment="bottom", gap="small"):
-        sitio_id = st.selectbox("Sitio", [s["id"] for s in F.SITIOS], format_func=lambda i: F.etiqueta(F.SITIO[i]),
-                                key="sitio", bind="query-params", width=360,
-                                help="Escribe para buscar entre las estaciones. Los modelos se consultan en las coordenadas del sitio elegido.")
+        if por_comuna:
+            st.session_state["ahora_comuna"] = F.SITIO[st.session_state["sitio"]]["comuna"]
+            comuna = st.selectbox("Comuna", sorted({s["comuna"] for s in F.SITIOS}), key="ahora_comuna",
+                                  on_change=_al_cambiar_comuna, width=200,
+                                  help="Filtra las estaciones de «Sitio» a las de esta comuna.")
+            ids = [i for i in ids if F.SITIO[i]["comuna"] == comuna]
+        sitio_id = st.selectbox("Sitio", ids, format_func=etiqueta_sitio, key="sitio", bind="query-params",
+                                width=320 if por_comuna else 400,
+                                help="Escribe para buscar por estación o por comuna. Los modelos se consultan en "
+                                     "las coordenadas del sitio elegido.")
         with st.popover("Ajustes", icon=":material/tune:"):
             pasado = st.slider("Días hacia atrás", 1, F.DIAS_PUBLICADOS, 3, key="pasado", bind="query-params")
             futuro = st.slider("Días de pronóstico", 1, F.DIAS_PUBLICADOS, 5, key="futuro", bind="query-params")

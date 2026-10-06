@@ -27,6 +27,7 @@ URL_METAR = "https://aviationweather.gov/api/data/metar"
 URL_OM = "https://api.open-meteo.com/v1/forecast"
 URL_ENS = "https://ensemble-api.open-meteo.com/v1/ensemble"
 ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+OSM = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
 # ------------------------------------------------------------------ catálogo
 # clave: dict(nombre, unidad, om = variable de Open-Meteo, vipnet = tipoEstacion,
@@ -67,151 +68,153 @@ ENSAMBLES = ["gfs_seamless", "ecmwf_ifs025", "icon_seamless", "gem_global"]  # 3
 # Lago Caburgua, Gorbea, Licán Ray) o en 35-47 % con lluvia (Río Truful) y viento fijo en 81 km/h
 # (Quitratúe). Río Cautín en Almagro y Río Trafampulli no entregan datos. Grupos por longitud:
 # costa (oeste de 72,85° O, incluye la cordillera de Nahuelbuta), valle y cordillera (este de 72,1° O).
+# "comuna": la comuna donde cae la estación según los límites de static/comunas_araucania.geojson (una
+# estación junto a un río puede quedar en la comuna vecina a la que le da nombre, p. ej. Teodoro Schmidt).
 SITIOS = [
-    dict(id="aeropuerto", nombre="Aeropuerto La Araucanía", fuente="metar", codigo="SCQP",
+    dict(id="aeropuerto", nombre="Aeropuerto La Araucanía", fuente="metar", codigo="SCQP", comuna="Freire",
          lat=-38.9250, lon=-72.6480, alt=100, grupo="valle",
          vars=["temperatura", "humedad", "viento", "rafaga", "direccion", "presion"]),
-    dict(id="parque_nahuelbuta", nombre="Parque Nahuelbuta", fuente="vipnet", codigo="08358005-4",
+    dict(id="parque_nahuelbuta", nombre="Parque Nahuelbuta", fuente="vipnet", codigo="08358005-4", comuna="Angol",
          lat=-37.8232, lon=-72.9606, alt=1177, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rio_puren_en_tranaman", nombre="Río Purén en Tranamán", fuente="vipnet", codigo="09101001-1",
+    dict(id="rio_puren_en_tranaman", nombre="Río Purén en Tranamán", fuente="vipnet", codigo="09101001-1", comuna="Purén",
          lat=-38.0194, lon=-73.0123, alt=90, grupo="costa", vars=["precipitacion"]),
-    dict(id="tranaman", nombre="Tranamán", fuente="vipnet", codigo="09101003-8",
+    dict(id="tranaman", nombre="Tranamán", fuente="vipnet", codigo="09101003-8", comuna="Purén",
          lat=-38.0214, lon=-73.0065, alt=78, grupo="costa", vars=["temperatura", "humedad"]),
-    dict(id="lumaco", nombre="Lumaco", fuente="vipnet", codigo="09102003-3",
+    dict(id="lumaco", nombre="Lumaco", fuente="vipnet", codigo="09102003-3", comuna="Lumaco",
          lat=-38.1635, lon=-72.9021, alt=60, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="bajo_yupehue", nombre="Bajo Yupehue", fuente="vipnet", codigo="09000001-2",
+    dict(id="bajo_yupehue", nombre="Bajo Yupehue", fuente="vipnet", codigo="09000001-2", comuna="Carahue",
          lat=-38.5536, lon=-73.4856, alt=139, grupo="costa", vars=["temperatura", "precipitacion"]),
-    dict(id="carahue", nombre="Carahue", fuente="vipnet", codigo="09151001-4",
+    dict(id="carahue", nombre="Carahue", fuente="vipnet", codigo="09151001-4", comuna="Carahue",
          lat=-38.7128, lon=-73.1476, alt=77, grupo="costa", vars=["precipitacion"]),
-    dict(id="nueva_imperial", nombre="Nueva Imperial", fuente="vipnet", codigo="09150003-5",
+    dict(id="nueva_imperial", nombre="Nueva Imperial", fuente="vipnet", codigo="09150003-5", comuna="Nueva Imperial",
          lat=-38.7464, lon=-72.9553, alt=23, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="boroa", nombre="Boroa", fuente="vipnet", codigo="09129016-2",
+    dict(id="boroa", nombre="Boroa", fuente="vipnet", codigo="09129016-2", comuna="Nueva Imperial",
          lat=-38.7689, lon=-72.8778, alt=41, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="puerto_saavedra", nombre="Puerto Saavedra", fuente="vipnet", codigo="09153001-5",
+    dict(id="puerto_saavedra", nombre="Puerto Saavedra", fuente="vipnet", codigo="09153001-5", comuna="Saavedra",
          lat=-38.7931, lon=-73.3959, alt=5, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="puerto_dominguez", nombre="Puerto Domínguez", fuente="vipnet", codigo="09200002-8",
+    dict(id="puerto_dominguez", nombre="Puerto Domínguez", fuente="vipnet", codigo="09200002-8", comuna="Saavedra",
          lat=-38.8972, lon=-73.2539, alt=13, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rio_tolten_en_teodoro_schmidt", nombre="Río Toltén en Teodoro Schmidt", fuente="vipnet", codigo="09437002-7",
+    dict(id="rio_tolten_en_teodoro_schmidt", nombre="Río Toltén en Teodoro Schmidt", fuente="vipnet", codigo="09437002-7", comuna="Toltén",
          lat=-39.0143, lon=-73.0829, alt=15, grupo="costa", vars=["precipitacion"]),
-    dict(id="teodoro_schmidt", nombre="Teodoro Schmidt", fuente="vipnet", codigo="09438001-4",
+    dict(id="teodoro_schmidt", nombre="Teodoro Schmidt", fuente="vipnet", codigo="09438001-4", comuna="Toltén",
          lat=-39.0251, lon=-73.0793, alt=13, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="faja_maisan", nombre="Faja Maisan", fuente="vipnet", codigo="09436002-1",
+    dict(id="faja_maisan", nombre="Faja Maisan", fuente="vipnet", codigo="09436002-1", comuna="Pitrufquén",
          lat=-39.0875, lon=-72.9306, alt=57, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="porma", nombre="Porma", fuente="vipnet", codigo="09300001-3",
+    dict(id="porma", nombre="Porma", fuente="vipnet", codigo="09300001-3", comuna="Teodoro Schmidt",
          lat=-39.1270, lon=-73.2672, alt=12, grupo="costa", vars=["temperatura", "precipitacion"]),
-    dict(id="tolten", nombre="Toltén", fuente="vipnet", codigo="09439001-K",
+    dict(id="tolten", nombre="Toltén", fuente="vipnet", codigo="09439001-K", comuna="Toltén",
          lat=-39.1763, lon=-73.1621, alt=5, grupo="costa", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="posta_esperanza", nombre="Posta Esperanza", fuente="vipnet", codigo="09500001-0",
+    dict(id="posta_esperanza", nombre="Posta Esperanza", fuente="vipnet", codigo="09500001-0", comuna="Toltén",
          lat=-39.3136, lon=-73.1911, alt=14, grupo="costa", vars=["temperatura", "precipitacion"]),
-    dict(id="angol_la_mona", nombre="Angol (La Mona)", fuente="vipnet", codigo="08358002-K",
+    dict(id="angol_la_mona", nombre="Angol (La Mona)", fuente="vipnet", codigo="08358002-K", comuna="Angol",
          lat=-37.7792, lon=-72.6372, alt=113, grupo="valle", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="rio_mininco_en_longitudinal", nombre="Río Mininco en Longitudinal", fuente="vipnet", codigo="08343001-K",
+    dict(id="rio_mininco_en_longitudinal", nombre="Río Mininco en Longitudinal", fuente="vipnet", codigo="08343001-K", comuna="Collipulli",
          lat=-37.8632, lon=-72.3925, alt=125, grupo="valle", vars=["precipitacion"]),
-    dict(id="rio_rehue_en_quebrada_culen", nombre="Río Rehue en Quebrada Culén", fuente="vipnet", codigo="08356001-0",
+    dict(id="rio_rehue_en_quebrada_culen", nombre="Río Rehue en Quebrada Culén", fuente="vipnet", codigo="08356001-0", comuna="Los Sauces",
          lat=-37.9414, lon=-72.8061, alt=65, grupo="valle", vars=["humedad", "precipitacion"]),
-    dict(id="rio_malleco_en_collipulli", nombre="Río Malleco en Collipulli", fuente="vipnet", codigo="08351001-3",
+    dict(id="rio_malleco_en_collipulli", nombre="Río Malleco en Collipulli", fuente="vipnet", codigo="08351001-3", comuna="Collipulli",
          lat=-37.9647, lon=-72.4357, alt=153, grupo="valle", vars=["precipitacion"]),
-    dict(id="ercilla_vida_nueva", nombre="Ercilla (Vida Nueva)", fuente="vipnet", codigo="08353001-4",
+    dict(id="ercilla_vida_nueva", nombre="Ercilla (Vida Nueva)", fuente="vipnet", codigo="08353001-4", comuna="Ercilla",
          lat=-38.0448, lon=-72.4603, alt=262, grupo="valle", vars=["precipitacion"]),
-    dict(id="pailahueque", nombre="Pailahueque", fuente="vipnet", codigo="09104006-9",
+    dict(id="pailahueque", nombre="Pailahueque", fuente="vipnet", codigo="09104006-9", comuna="Ercilla",
          lat=-38.1267, lon=-72.3189, alt=376, grupo="valle", vars=["temperatura", "humedad"]),
-    dict(id="las_mercedes_victoria", nombre="Las Mercedes (Victoria)", fuente="vipnet", codigo="09104003-4",
+    dict(id="las_mercedes_victoria", nombre="Las Mercedes (Victoria)", fuente="vipnet", codigo="09104003-4", comuna="Victoria",
          lat=-38.2461, lon=-72.2288, alt=421, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="traiguen", nombre="Traiguén", fuente="vipnet", codigo="09105002-1",
+    dict(id="traiguen", nombre="Traiguén", fuente="vipnet", codigo="09105002-1", comuna="Traiguén",
          lat=-38.2561, lon=-72.6535, alt=234, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="galvarino", nombre="Galvarino", fuente="vipnet", codigo="09113003-3",
+    dict(id="galvarino", nombre="Galvarino", fuente="vipnet", codigo="09113003-3", comuna="Galvarino",
          lat=-38.4102, lon=-72.7838, alt=40, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="perquenco", nombre="Perquenco", fuente="vipnet", codigo="09112000-3",
+    dict(id="perquenco", nombre="Perquenco", fuente="vipnet", codigo="09112000-3", comuna="Perquenco",
          lat=-38.4185, lon=-72.3773, alt=290, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="quillen", nombre="Quillén", fuente="vipnet", codigo="09111002-4",
+    dict(id="quillen", nombre="Quillén", fuente="vipnet", codigo="09111002-4", comuna="Perquenco",
          lat=-38.4641, lon=-72.3867, alt=285, grupo="valle", vars=["precipitacion"]),
-    dict(id="lautaro", nombre="Lautaro", fuente="vipnet", codigo="09124001-7",
+    dict(id="lautaro", nombre="Lautaro", fuente="vipnet", codigo="09124001-7", comuna="Lautaro",
          lat=-38.5254, lon=-72.4435, alt=200, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rio_cholchol_en_cholchol", nombre="Río Cholchol en Cholchol", fuente="vipnet", codigo="09116001-3",
+    dict(id="rio_cholchol_en_cholchol", nombre="Río Cholchol en Cholchol", fuente="vipnet", codigo="09116001-3", comuna="Cholchol",
          lat=-38.6077, lon=-72.8474, alt=20, grupo="valle", vars=["precipitacion"]),
-    dict(id="vilcun", nombre="Vilcún", fuente="vipnet", codigo="09131002-3",
+    dict(id="vilcun", nombre="Vilcún", fuente="vipnet", codigo="09131002-3", comuna="Vilcún",
          lat=-38.6738, lon=-72.2210, alt=290, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rio_cautin_en_cajon", nombre="Río Cautín en Cajón", fuente="vipnet", codigo="09129002-2",
+    dict(id="rio_cautin_en_cajon", nombre="Río Cautín en Cajón", fuente="vipnet", codigo="09129002-2", comuna="Padre Las Casas",
          lat=-38.6866, lon=-72.5027, alt=130, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="pueblo_nuevo_temuco", nombre="Pueblo Nuevo (Temuco)", fuente="vipnet", codigo="09129005-7",
+    dict(id="pueblo_nuevo_temuco", nombre="Pueblo Nuevo (Temuco)", fuente="vipnet", codigo="09129005-7", comuna="Temuco",
          lat=-38.7127, lon=-72.5560, alt=119, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="temuco_centro", nombre="Temuco Centro", fuente="vipnet", codigo="09129006-5",
+    dict(id="temuco_centro", nombre="Temuco Centro", fuente="vipnet", codigo="09129006-5", comuna="Temuco",
          lat=-38.7425, lon=-72.5897, alt=122, grupo="valle", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="padre_las_casas", nombre="Padre Las Casas", fuente="vipnet", codigo="09132002-9",
+    dict(id="padre_las_casas", nombre="Padre Las Casas", fuente="vipnet", codigo="09132002-9", comuna="Padre Las Casas",
          lat=-38.8358, lon=-72.4786, alt=117, grupo="valle", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="rio_huichahue_en_faja_24000", nombre="Río Huichahue en Faja 24000", fuente="vipnet", codigo="09134001-1",
+    dict(id="rio_huichahue_en_faja_24000", nombre="Río Huichahue en Faja 24000", fuente="vipnet", codigo="09134001-1", comuna="Cunco",
          lat=-38.8540, lon=-72.2850, alt=150, grupo="valle", vars=["temperatura", "precipitacion"]),
-    dict(id="freire", nombre="Freire", fuente="vipnet", codigo="09135003-3",
+    dict(id="freire", nombre="Freire", fuente="vipnet", codigo="09135003-3", comuna="Freire",
          lat=-38.9597, lon=-72.6085, alt=100, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rio_allipen_en_los_laureles", nombre="Río Allipén en Los Laureles", fuente="vipnet", codigo="09404001-9",
+    dict(id="rio_allipen_en_los_laureles", nombre="Río Allipén en Los Laureles", fuente="vipnet", codigo="09404001-9", comuna="Cunco",
          lat=-39.0073, lon=-72.2300, alt=190, grupo="valle", vars=["precipitacion"]),
-    dict(id="rio_tolten_en_coipue", nombre="Río Toltén en Coipué", fuente="vipnet", codigo="09423001-2",
+    dict(id="rio_tolten_en_coipue", nombre="Río Toltén en Coipué", fuente="vipnet", codigo="09423001-2", comuna="Freire",
          lat=-39.0805, lon=-72.4524, alt=200, grupo="valle", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="gorbea", nombre="Gorbea", fuente="vipnet", codigo="09434003-9",
+    dict(id="gorbea", nombre="Gorbea", fuente="vipnet", codigo="09434003-9", comuna="Gorbea",
          lat=-39.1064, lon=-72.6786, alt=94, grupo="valle", vars=["temperatura", "viento", "precipitacion"]),
-    dict(id="quitratue", nombre="Quitratúe", fuente="vipnet", codigo="09433003-3",
+    dict(id="quitratue", nombre="Quitratúe", fuente="vipnet", codigo="09433003-3", comuna="Gorbea",
          lat=-39.1541, lon=-72.6568, alt=90, grupo="valle", vars=["temperatura", "humedad"]),
-    dict(id="villarrica", nombre="Villarrica", fuente="vipnet", codigo="09420003-2",
+    dict(id="villarrica", nombre="Villarrica", fuente="vipnet", codigo="09420003-2", comuna="Villarrica",
          lat=-39.2177, lon=-72.2945, alt=210, grupo="valle", vars=["precipitacion"]),
-    dict(id="loncoche", nombre="Loncoche", fuente="vipnet", codigo="10130001-3",
+    dict(id="loncoche", nombre="Loncoche", fuente="vipnet", codigo="10130001-3", comuna="Loncoche",
          lat=-39.3719, lon=-72.6175, alt=120, grupo="valle", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="lican_ray", nombre="Licán Ray", fuente="vipnet", codigo="10106003-9",
+    dict(id="lican_ray", nombre="Licán Ray", fuente="vipnet", codigo="10106003-9", comuna="Villarrica",
          lat=-39.3859, lon=-72.2240, alt=275, grupo="valle", vars=["temperatura", "precipitacion"]),
-    dict(id="chanlelfu", nombre="Chanlelfu", fuente="vipnet", codigo="09420004-0",
+    dict(id="chanlelfu", nombre="Chanlelfu", fuente="vipnet", codigo="09420004-0", comuna="Loncoche",
          lat=-39.4650, lon=-72.3750, alt=345, grupo="valle", vars=["temperatura", "humedad", "viento"]),
-    dict(id="rio_biobio_en_llanquen", nombre="Río Biobío en Llanquén", fuente="vipnet", codigo="08307002-1",
+    dict(id="rio_biobio_en_llanquen", nombre="Río Biobío en Llanquén", fuente="vipnet", codigo="08307002-1", comuna="Lonquimay",
          lat=-38.2009, lon=-71.2989, alt=767, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="laguna_malleco", nombre="Laguna Malleco", fuente="vipnet", codigo="08350002-6",
+    dict(id="laguna_malleco", nombre="Laguna Malleco", fuente="vipnet", codigo="08350002-6", comuna="Curacautín",
          lat=-38.2152, lon=-71.8112, alt=894, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rari_ruca", nombre="Rari-Ruca", fuente="vipnet", codigo="09123002-K",
+    dict(id="rari_ruca", nombre="Rari-Ruca", fuente="vipnet", codigo="09123002-K", comuna="Curacautín",
          lat=-38.4250, lon=-72.0108, alt=440, grupo="cordillera", vars=["precipitacion"]),
-    dict(id="rio_cautin_en_rari_ruca", nombre="Río Cautín en Rari-Ruca", fuente="vipnet", codigo="09123001-1",
+    dict(id="rio_cautin_en_rari_ruca", nombre="Río Cautín en Rari-Ruca", fuente="vipnet", codigo="09123001-1", comuna="Curacautín",
          lat=-38.4300, lon=-72.0104, alt=425, grupo="cordillera", vars=["precipitacion"]),
-    dict(id="curacautin", nombre="Curacautín", fuente="vipnet", codigo="09122001-6",
+    dict(id="curacautin", nombre="Curacautín", fuente="vipnet", codigo="09122001-6", comuna="Curacautín",
          lat=-38.4475, lon=-71.8961, alt=535, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="lonquimay", nombre="Lonquimay", fuente="vipnet", codigo="08304004-1",
+    dict(id="lonquimay", nombre="Lonquimay", fuente="vipnet", codigo="08304004-1", comuna="Lonquimay",
          lat=-38.4549, lon=-71.3749, alt=931, grupo="cordillera", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="malalcahuello", nombre="Malalcahuello", fuente="vipnet", codigo="09120003-1",
+    dict(id="malalcahuello", nombre="Malalcahuello", fuente="vipnet", codigo="09120003-1", comuna="Curacautín",
          lat=-38.4709, lon=-71.5711, alt=950, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="liucura_lonquimay", nombre="Liucura (Lonquimay)", fuente="vipnet", codigo="08301001-0",
+    dict(id="liucura_lonquimay", nombre="Liucura (Lonquimay)", fuente="vipnet", codigo="08301001-0", comuna="Lonquimay",
          lat=-38.6454, lon=-71.0910, alt=1034, grupo="cordillera", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="cherquenco", nombre="Cherquenco", fuente="vipnet", codigo="09130001-K",
+    dict(id="cherquenco", nombre="Cherquenco", fuente="vipnet", codigo="09130001-K", comuna="Vilcún",
          lat=-38.6825, lon=-72.0021, alt=500, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="conguillio", nombre="Conguillío", fuente="vipnet", codigo="09400002-5",
+    dict(id="conguillio", nombre="Conguillío", fuente="vipnet", codigo="09400002-5", comuna="Melipeuco",
          lat=-38.7736, lon=-71.6347, alt=719, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="icalma", nombre="Icalma", fuente="vipnet", codigo="08300001-5",
+    dict(id="icalma", nombre="Icalma", fuente="vipnet", codigo="08300001-5", comuna="Lonquimay",
          lat=-38.8145, lon=-71.2806, alt=1160, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rio_truful_en_camino_internacional", nombre="Río Truful en Camino Internacional", fuente="vipnet", codigo="09400000-9",
+    dict(id="rio_truful_en_camino_internacional", nombre="Río Truful en Camino Internacional", fuente="vipnet", codigo="09400000-9", comuna="Melipeuco",
          lat=-38.8392, lon=-71.6561, alt=520, grupo="cordillera", vars=["temperatura"]),
-    dict(id="tricauco", nombre="Tricauco", fuente="vipnet", codigo="09401001-2",
+    dict(id="tricauco", nombre="Tricauco", fuente="vipnet", codigo="09401001-2", comuna="Melipeuco",
          lat=-38.8440, lon=-71.5513, alt=520, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="cunco", nombre="Cunco", fuente="vipnet", codigo="09403001-3",
+    dict(id="cunco", nombre="Cunco", fuente="vipnet", codigo="09403001-3", comuna="Cunco",
          lat=-38.9297, lon=-72.0155, alt=380, grupo="cordillera", vars=["precipitacion"]),
-    dict(id="los_laureles", nombre="Los Laureles", fuente="vipnet", codigo="09404002-7",
+    dict(id="los_laureles", nombre="Los Laureles", fuente="vipnet", codigo="09404002-7", comuna="Cunco",
          lat=-38.9971, lon=-72.0448, alt=260, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="pitrunco", nombre="Pitrunco", fuente="vipnet", codigo="09405011-1",
+    dict(id="pitrunco", nombre="Pitrunco", fuente="vipnet", codigo="09405011-1", comuna="Cunco",
          lat=-39.0506, lon=-72.0883, alt=334, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="llanqui_llanqui", nombre="Llanqui Llanqui", fuente="vipnet", codigo="09405010-3",
+    dict(id="llanqui_llanqui", nombre="Llanqui Llanqui", fuente="vipnet", codigo="09405010-3", comuna="Cunco",
          lat=-39.0644, lon=-71.7667, alt=507, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="termas_rio_blanco", nombre="Termas Río Blanco", fuente="vipnet", codigo="09415001-9",
+    dict(id="termas_rio_blanco", nombre="Termas Río Blanco", fuente="vipnet", codigo="09415001-9", comuna="Pucón",
          lat=-39.1050, lon=-71.6186, alt=732, grupo="cordillera", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="lago_tinquilco", nombre="Lago Tinquilco", fuente="vipnet", codigo="09416002-2",
+    dict(id="lago_tinquilco", nombre="Lago Tinquilco", fuente="vipnet", codigo="09416002-2", comuna="Pucón",
          lat=-39.1726, lon=-71.7319, alt=850, grupo="cordillera", vars=["precipitacion"]),
-    dict(id="lago_caburgua", nombre="Lago Caburgua", fuente="vipnet", codigo="09417001-K",
+    dict(id="lago_caburgua", nombre="Lago Caburgua", fuente="vipnet", codigo="09417001-K", comuna="Pucón",
          lat=-39.1880, lon=-71.7717, alt=480, grupo="cordillera", vars=["temperatura", "precipitacion"]),
-    dict(id="quinenahuin", nombre="Quiñenahuín", fuente="vipnet", codigo="09411002-5",
+    dict(id="quinenahuin", nombre="Quiñenahuín", fuente="vipnet", codigo="09411002-5", comuna="Curarrehue",
          lat=-39.2183, lon=-71.4356, alt=659, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="rio_liucura_en_liucura", nombre="Río Liucura en Liucura", fuente="vipnet", codigo="09416001-4",
+    dict(id="rio_liucura_en_liucura", nombre="Río Liucura en Liucura", fuente="vipnet", codigo="09416001-4", comuna="Pucón",
          lat=-39.2605, lon=-71.8269, alt=402, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="pucon", nombre="Pucón", fuente="vipnet", codigo="09420002-4",
+    dict(id="pucon", nombre="Pucón", fuente="vipnet", codigo="09420002-4", comuna="Pucón",
          lat=-39.2893, lon=-71.9264, alt=230, grupo="cordillera", vars=["temperatura", "humedad", "viento", "precipitacion"]),
-    dict(id="llafenco", nombre="Llafenco", fuente="vipnet", codigo="09414002-1",
+    dict(id="llafenco", nombre="Llafenco", fuente="vipnet", codigo="09414002-1", comuna="Pucón",
          lat=-39.3326, lon=-71.8181, alt=360, grupo="cordillera", vars=["precipitacion"]),
-    dict(id="parque_nacional_villarrica", nombre="Parque Nacional Villarrica", fuente="vipnet", codigo="09420019-9",
+    dict(id="parque_nacional_villarrica", nombre="Parque Nacional Villarrica", fuente="vipnet", codigo="09420019-9", comuna="Pucón",
          lat=-39.3497, lon=-71.9695, alt=800, grupo="cordillera", vars=["temperatura", "precipitacion"]),
-    dict(id="curarrehue", nombre="Curarrehue", fuente="vipnet", codigo="09412002-0",
+    dict(id="curarrehue", nombre="Curarrehue", fuente="vipnet", codigo="09412002-0", comuna="Curarrehue",
          lat=-39.3650, lon=-71.5823, alt=420, grupo="cordillera", vars=["temperatura", "humedad", "precipitacion"]),
-    dict(id="puesco_aduana", nombre="Puesco (Aduana)", fuente="vipnet", codigo="09412003-9",
+    dict(id="puesco_aduana", nombre="Puesco (Aduana)", fuente="vipnet", codigo="09412003-9", comuna="Curarrehue",
          lat=-39.5335, lon=-71.5561, alt=620, grupo="cordillera", vars=["temperatura", "precipitacion"]),
 ]
 SITIO = {s["id"]: s for s in SITIOS}
@@ -576,6 +579,89 @@ def lee_pronosticos(base=URL_PUBLICADOS):
         por_sitio[sid] = {"det": t["det"].get(sid, {}), "pct": t["pct"].get(e, {}), "pp": pp,
                           "raf6h": raf["p50"] if raf is not None else None}
     return pd.Timestamp(meta["generado"]), por_sitio
+
+
+# ------------------------------------------------------------------ grilla regional (mapas de superficie)
+# Los 7 modelos en una grilla de 0,2° que cubre la región (11 × 15 = 165 puntos), para dibujar campos
+# de viento, temperatura, presión y lluvia. Ventana corta (1 día atrás, 5 adelante): con 6 variables ×
+# 7 modelos cada punto pesa unas 2 consultas, ~330 por corrida.
+GRILLA_LAT = np.round(np.arange(-37.6, -39.61, -0.2), 2)  # de norte a sur
+GRILLA_LON = np.round(np.arange(-73.6, -70.79, 0.2), 2)   # de oeste a este
+GRILLA_VARS = ["viento", "direccion", "rafaga", "temperatura", "presion", "precipitacion"]
+GRILLA_PASADO, GRILLA_FUTURO = 1, 5
+GRILLA_LOTE = 20  # puntos por consulta (~0,7 MB por respuesta)
+
+
+def grilla(pasado=GRILLA_PASADO, futuro=GRILLA_FUTURO, pausa=0):
+    """Pronóstico de los 7 modelos en la grilla regional: DataFrame largo con columnas tiempo, lat,
+    lon y 'variable|modelo'. Se pide por lotes; si un lote falla, error (una grilla con huecos no
+    sirve para dibujar el campo)."""
+    puntos = [(la, lo) for la in GRILLA_LAT for lo in GRILLA_LON]
+    oms = [VARIABLES[v]["om"] for v in GRILLA_VARS]
+    partes = []
+    for k in range(0, len(puntos), GRILLA_LOTE):
+        if k and pausa:
+            time.sleep(pausa)
+        lote = puntos[k:k + GRILLA_LOTE]
+        resp = _get_json(URL_OM, _params(lote, oms, pasado, futuro) | {"models": ",".join(MODELOS)}, timeout=120)
+        for (la, lo), h in zip(lote, _por_punto(resp)):
+            df = pd.DataFrame({f"{v}|{m}": _serie(h[f"{VARIABLES[v]['om']}_{m}"])
+                               for v in GRILLA_VARS for m in MODELOS if f"{VARIABLES[v]['om']}_{m}" in h})
+            df.insert(0, "tiempo", pd.to_datetime(h["time"]))
+            df.insert(1, "lat", la)
+            df.insert(2, "lon", lo)
+            partes.append(df)
+    return pd.concat(partes, ignore_index=True).dropna(axis=1, how="all")  # p. ej. GSM no trae ráfagas
+
+
+def guarda_grilla(tabla, carpeta):
+    from pathlib import Path
+
+    datos = tabla.astype({c: "float32" for c in tabla.columns if "|" in c})
+    datos.to_parquet(Path(carpeta) / "grilla.parquet", compression="zstd")
+
+
+def lee_grilla(base=URL_PUBLICADOS):
+    """DataFrame de guarda_grilla desde la copia publicada (URL o carpeta)."""
+    import io
+    from pathlib import Path
+
+    if str(base).startswith("http"):
+        r = requests.get(f"{base}/grilla.parquet", headers=UA, timeout=60)
+        r.raise_for_status()
+        return pd.read_parquet(io.BytesIO(r.content))
+    return pd.read_parquet(Path(base) / "grilla.parquet")
+
+
+def cubo(tabla, variable, modelo):
+    """(horas, arreglo horas × lat × lon) de 'variable' del 'modelo', de norte a sur y de oeste a este.
+    variable="uv": las componentes (u, v) del viento en km/h. modelo="mediana": mediana entre los modelos
+    (el viento, sobre u y v, para no promediar ángulos)."""
+    horas = np.sort(tabla.tiempo.unique())
+    it = np.searchsorted(horas, tabla.tiempo.values)
+    iy = np.abs(tabla.lat.values[:, None] - GRILLA_LAT).argmin(axis=1)
+    ix = np.abs(tabla.lon.values[:, None] - GRILLA_LON).argmin(axis=1)
+
+    def arreglo(col):
+        a = np.full((len(horas), len(GRILLA_LAT), len(GRILLA_LON)), np.nan, np.float32)
+        if col in tabla:
+            a[it, iy, ix] = tabla[col].values
+        return a
+
+    def uv(m):
+        rad = np.deg2rad(arreglo(f"direccion|{m}"))
+        vel = arreglo(f"viento|{m}")
+        return np.stack([-vel * np.sin(rad), -vel * np.cos(rad)])  # la dirección es de dónde viene el viento
+
+    una = uv if variable == "uv" else (lambda m: arreglo(f"{variable}|{m}"))
+    if modelo != "mediana":
+        return pd.DatetimeIndex(horas), una(modelo)
+    presentes = [m for m in MODELOS if f"{'viento' if variable == 'uv' else variable}|{m}" in tabla]
+    if not presentes:
+        return pd.DatetimeIndex(horas), una(None)
+    with warnings.catch_warnings():  # puntos sin ningún modelo: quedan en NaN
+        warnings.simplefilter("ignore", RuntimeWarning)
+        return pd.DatetimeIndex(horas), np.nanmedian([una(m) for m in presentes], axis=0)
 
 
 # ------------------------------------------------------------------ verificación

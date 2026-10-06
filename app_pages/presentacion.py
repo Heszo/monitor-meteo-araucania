@@ -24,7 +24,11 @@ TARJETAS = [
      "Temperatura, humedad, viento, dirección, presión y lluvia apiladas en un mismo eje de tiempo, para un "
      "modelo o la mediana de todos."),
     ("Mapa de estaciones", "mapa", ":material/map:",
-     "La última medición de cada estación sobre imagen satelital: dónde hace más frío, dónde llueve más."),
+     "La última medición de cada estación sobre imagen satelital y los límites comunales: busca tu comuna y "
+     "mira qué estaciones tiene."),
+    ("Mapas de superficie", "superficie", ":material/air:",
+     "El viento de los modelos animado sobre la región, hora a hora, con temperatura, presión o lluvia de "
+     "fondo, y rosas de viento de cada modelo contra lo observado."),
 ]
 
 st.markdown(f"""
@@ -47,7 +51,7 @@ Estaciones locales, modelos globales y verificación de pronósticos en un solo 
 
 # --- ahora mismo
 st.subheader("Ahora mismo", icon=":material/schedule:", anchor=False)
-c = C.controles()
+c = C.controles(por_comuna=True)
 sitio, ahora, metar, pron, avisos = c.sitio, c.ahora, c.metar, c.pron, c.avisos
 origen_pron, observado, det_var = c.origen_pron, c.observado, c.det_var
 C.metricas_ahora(c)
@@ -108,9 +112,9 @@ if not temp.empty:
 
 # --- qué se puede hacer
 st.subheader("Qué puedes hacer aquí", icon=":material/explore:", anchor=False)
-cols = st.columns(4)
+cols = st.columns(len(TARJETAS))
 for col, (nombre, archivo, icono, texto) in zip(cols, TARJETAS):
-    with col.container(border=True, height=235):
+    with col.container(border=True, height=270):
         st.markdown(f"**{nombre}**")
         st.caption(texto)
         st.page_link(f"app_pages/{archivo}.py", label="Abrir", icon=icono, width="stretch")
@@ -120,16 +124,21 @@ st.subheader("Cómo funciona", icon=":material/settings_suggest:", anchor=False)
 col_red, col_pasos = st.columns([5, 6], gap="large")
 with col_red:
     fred = go.Figure()
-    for g, color in F.GRUPOS.items():
-        ss = [x for x in F.SITIOS if x["grupo"] == g]
+    # dos fuentes: las estaciones VIPNet (DGA) y el METAR del aeropuerto, más grande
+    for fuente, nombre, color, tam in [("vipnet", "VIPNet (DGA)", "#4FC3F7", 9),
+                                       ("metar", "Aeropuerto (METAR)", "#FF7043", 14)]:
+        ss = [x for x in F.SITIOS if x["fuente"] == fuente]
         fred.add_trace(go.Scattermap(lat=[x["lat"] for x in ss], lon=[x["lon"] for x in ss], mode="markers",
-                                     marker=dict(size=10, color=color), name=g,
-                                     text=[x["nombre"] for x in ss], hovertemplate="%{text}<extra></extra>"))
-    fred.update_layout(map=C.MAPA | dict(zoom=6.6), margin=dict(l=0, r=0, t=0, b=0), height=420,
-                       legend=dict(orientation="h", y=0.02, x=0.02, bgcolor="rgba(255,255,255,.85)"))
+                                     marker=dict(size=tam, color=color), name=nombre,
+                                     text=[f"{x['nombre']} ({x['comuna']})" for x in ss],
+                                     hovertemplate="%{text}<extra></extra>"))
+    fred.update_layout(map=C.mapa(zoom=6.6), margin=dict(l=0, r=0, t=0, b=0), height=420,
+                       legend=dict(orientation="h", x=.01, y=.01, xanchor="left", yanchor="bottom",
+                                   bgcolor="rgba(0,0,0,.55)", font=dict(color="white", size=11),
+                                   itemclick=False, itemdoubleclick=False))
     C.grafico(fred, "red_estaciones", key="mapa_red", boton="resetViewMap")
-    st.caption(f"La red: {len(VIP)} estaciones VIPNet y el aeropuerto La Araucanía, agrupadas en costa "
-               "(con la cordillera de Nahuelbuta), valle y cordillera. Imagen: Esri World Imagery.")
+    st.caption(f"La red: {len(VIP)} estaciones VIPNet y el aeropuerto La Araucanía. "
+               f"Mapa base: {C.credito_mapa()}.")
 with col_pasos:
     for n, titulo, texto in [
         ("1", "Observa", f"Cada hora se leen las {len(VIP)} estaciones de la red VIPNet (DGA/MOP) de la región, "
@@ -160,7 +169,8 @@ col_f.markdown(f"""
 | [METAR SCQP](https://aviationweather.gov) (aeropuerto La Araucanía, NOAA AWC) | temperatura, humedad, viento, ráfaga, dirección, presión QNH | 1 h |
 | [Open-Meteo](https://open-meteo.com) | GFS (NOAA), IFS (ECMWF), ICON (DWD), GEM (Canadá), GSM (JMA), UM (UK Met Office), ARPEGE (Météo-France) | 1 h |
 | [Open-Meteo Ensemble](https://open-meteo.com/en/docs/ensemble-api) | GEFS (31) + IFS-ENS (51) + ICON-EPS (40) + GEPS (21) = 143 miembros | 1 h |
-| Esri World Imagery | imagen satelital de los mapas | — |
+| Esri World Imagery · [OpenStreetMap](https://www.openstreetmap.org/copyright) | mapa base: satélite o calles | — |
+| [BCN](https://www.bcn.cl/siit/mapas_vectoriales) (división político-administrativa) | límites comunales | — |
 """)
 col_c.markdown("""
 - Datos observados **preliminares**, sin control de calidad.
@@ -178,11 +188,10 @@ col_c.markdown("""
 st.space("medium")
 with st.container(horizontal=True, vertical_alignment="center", gap="large"):
     st.image(str(C.LOGO_COMPLETO), width=300)
-    st.markdown(
-        "Hecho por **Bruno Herrera** · MetGeo Spa  \n"
-        ":material/code: [github.com/Heszo](https://github.com/Heszo) · código abierto (MIT) en "
-        f"[github.com/{F.REPO}]({C.REPO_URL})")
+    st.markdown("Hecho por **Bruno Herrera** · MetGeo Spa")
     with st.container(horizontal=True, gap="small", width="content"):
+        st.link_button("Suscríbete al newsletter", C.NEWSLETTER, icon=":material/mail:", type="primary")
+        st.link_button("metgeo.cl", C.METGEO, icon=":material/public:")
         st.link_button("Instagram @metgeo.spa", C.INSTAGRAM, icon=":material/photo_camera:")
         st.link_button("LinkedIn MetGeo Spa", C.LINKEDIN, icon=":material/work:")
 st.caption(f"Consultado el {ahora:%d/%m/%Y %H:%M} (hora de Chile) · pronóstico: "

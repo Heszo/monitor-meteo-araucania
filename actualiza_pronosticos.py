@@ -6,7 +6,8 @@ hora y publica el resultado en la rama "datos", que es lo que lee la app.
 
 Con ~70 sitios no conviene una consulta por sitio: se piden en lotes (Open-Meteo acepta
 varias coordenadas en una misma consulta). Los 7 modelos se piden en cada estación y el
-super-ensamble una vez por nodo (ver F.NODO), que es lo que cuida la cuota gratuita.
+super-ensamble una vez por nodo (ver F.NODO), que es lo que cuida la cuota gratuita. Al final
+se baja la grilla regional de los mapas de superficie (F.grilla); si falla, se publica el resto igual.
 
     python actualiza_pronosticos.py salida/
 """
@@ -20,6 +21,7 @@ import fuentes as F
 POR_LOTE = 8             # puntos por consulta (una respuesta del ensamble IFS de 8 puntos pesa ~4 MB)
 EN_PARALELO = 2          # lotes de modelos a la vez
 PAUSA_ENSAMBLE_S = 60    # un lote de ensamble (8 nodos × 143 miembros) roza el límite de 600 consultas por minuto
+PAUSA_GRILLA_S = 10     # entre lotes de la grilla (~40 consultas cada uno)
 PRESUPUESTO_S = 20 * 60  # pasado este tiempo se publica lo que haya (el job corta a los 40 min)
 
 
@@ -78,8 +80,17 @@ def main(carpeta):
     if not por_sitio:
         sys.exit("Ningún sitio respondió; se mantiene la copia publicada anterior.")
     F.guarda_pronosticos(por_sitio, carpeta, datetime.now(timezone.utc).isoformat(timespec="seconds"), F.NODO)
+    sin_grilla = "sin tiempo"
+    if time.monotonic() - inicio < PRESUPUESTO_S:
+        time.sleep(PAUSA_ENSAMBLE_S)  # que el último lote del ensamble salga de la ventana por minuto
+        try:
+            F.guarda_grilla(F.grilla(pausa=PAUSA_GRILLA_S), carpeta)
+            sin_grilla = ""
+        except F.OpenMeteoError as ex:
+            sin_grilla = str(ex)[:160]
     avisos = [f"sin modelos: {', '.join(F.SITIO[i]['nombre'] for i in sin_det)}" if sin_det else "",
-              f"sin ensamble en los nodos: {', '.join(F.SITIO[i]['nombre'] for i in sin_ens)}" if sin_ens else ""]
+              f"sin ensamble en los nodos: {', '.join(F.SITIO[i]['nombre'] for i in sin_ens)}" if sin_ens else "",
+              f"sin grilla: {sin_grilla}" if sin_grilla else ""]
     print(f"Guardado en {carpeta}: {len(por_sitio)} sitios, {len(ens)}/{len(nodos)} nodos de ensamble, "
           f"en {time.monotonic() - inicio:.0f} s" + "".join(f" ({a})" for a in avisos if a))
 

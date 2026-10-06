@@ -11,7 +11,7 @@ from streamlit.testing.v1 import AppTest
 
 import fuentes as F
 
-PAGINAS = ["presentacion", "comparar", "lluvia", "meteograma", "mapa"]
+PAGINAS = ["presentacion", "comparar", "lluvia", "meteograma", "mapa", "superficie"]
 ENTRADA = "../streamlit_app.py"
 TIEMPO = 300  # la primera corrida descarga todo
 
@@ -64,8 +64,45 @@ def test_presentacion_enlaza_cada_pagina():
 
 
 def test_estacion_en_lluvia():
-    at = abre("lluvia", sitio="pucon")
-    at.selectbox(key="estacion").set_value("Pucón").run()
+    """Elegir una estación desde «Estación» la vuelve el sitio de toda la app; «Por comuna» dibuja el
+    ensamble de la comuna y cambiar la comuna cambia el sitio."""
+    at = abre("lluvia", sitio="temuco_centro")
+    at.selectbox(key="lluvia_comuna").set_value("Pucón").run()
+    assert errores(at) == []
+    assert F.SITIO[at.session_state["sitio"]]["comuna"] == "Pucón"
+    at.selectbox(key="lluvia_estacion").set_value("pucon").run()
+    assert errores(at) == []
+    assert at.session_state["sitio"] == "pucon"
+    at.segmented_control(key="lluvia_vista").set_value("Por comuna").run()
+    assert errores(at) == []
+    at.selectbox(key="lluvia_comuna").set_value("Cunco").run()
+    assert errores(at) == []
+    assert F.SITIO[at.session_state["sitio"]]["comuna"] == "Cunco"
+
+
+def test_lluvia_sitio_sin_lluvia():
+    """El aeropuerto no mide lluvia: la página muestra su comuna sin romperse."""
+    assert errores(abre("lluvia", sitio="aeropuerto")) == []
+
+
+def test_comuna_en_mapa():
+    at = abre("mapa")
+    for comuna in ["Temuco", "Renaico"]:  # Renaico no tiene estaciones: se muestra la más cercana
+        at.selectbox(key="comuna").set_value(comuna).run()
+        assert errores(at) == [], comuna
+        assert len(at.dataframe[0].value) >= 1
+
+
+def test_superficie():
+    at = abre("superficie", sitio="aeropuerto")
+    for fondo in ["temperatura", "presion", "precipitacion", "rafaga"]:
+        at.radio(key="fondo").set_value(fondo).run()
+        assert errores(at) == [], fondo
+    at.selectbox(key="modelo_mapa").set_value("gfs_seamless").run()
+    at.segmented_control(key="mapa_base").set_value("calles").run()
+    at.toggle(key="particulas").set_value(False).run()
+    assert errores(at) == []
+    at.segmented_control(key="periodo_rosa").set_value("futuro").run()
     assert errores(at) == []
 
 
@@ -75,6 +112,9 @@ def test_catalogo():
     assert set(F.NODO) == set(ids) and set(F.NODO.values()) <= set(ids)
     for s in F.SITIOS:
         assert s["grupo"] in F.GRUPOS and set(s["vars"]) <= set(F.VARIABLES), s["id"]
+    import comun as C
+    assert {s["comuna"] for s in F.SITIOS} <= set(C.NOMBRES_COMUNAS)
+    assert len(C.NOMBRES_COMUNAS) == 32
 
 
 def test_guardar_graficos():
@@ -86,3 +126,13 @@ def test_guardar_graficos():
     fig = pio.from_json(at.get("plotly_chart")[0].proto.spec)
     assert C.exporta(fig, "pdf")[:5] == b"%PDF-"
     assert C.exporta(fig, "png")[:4] == b"\x89PNG"
+
+
+def test_ahora_mismo_por_comuna():
+    """El Home parte en Temuco Centro; al cambiar la comuna, «Sitio» pasa a una estación de esa comuna."""
+    at = abre()
+    assert at.session_state["sitio"] == "temuco_centro"
+    at.selectbox(key="ahora_comuna").set_value("Pucón").run()
+    assert errores(at) == []
+    assert F.SITIO[at.session_state["sitio"]]["comuna"] == "Pucón"
+    assert len(at.selectbox(key="sitio").options) == sum(s["comuna"] == "Pucón" for s in F.SITIOS)

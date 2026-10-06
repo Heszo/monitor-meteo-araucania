@@ -20,9 +20,10 @@ Se actualiza sola y no necesita claves ni base de datos: las observaciones se de
 |---|---|
 | **Home** | Portada: qué es el proyecto, las condiciones de ahora, lo que viene en 24 h y los próximos 3 días, accesos a cada vista, cómo funciona, fuentes y advertencias. |
 | **Comparar modelos** | Una variable a la vez en el sitio elegido: los 7 modelos, la banda p10–p90 del super-ensamble y lo observado. Debajo, una tabla con sesgo, MAE, RMSE y correlación de cada modelo en las horas ya ocurridas. La lluvia se dibuja como histograma horario. |
-| **Lluvia** | Mapa satelital con el acumulado observado por estación, histograma horario (mediana y p10–p90 del ensamble contra el observado por grupo o estación), acumulado y tarjetas de lluvia esperada cada 6 h con ráfaga. |
+| **Lluvia** | Mapa satelital con el acumulado observado por estación, histograma horario (mediana y p10–p90 del ensamble contra el observado de la estación o de su comuna), acumulado y tarjetas de lluvia esperada cada 6 h con ráfaga. |
 | **Meteograma** | Las 6 variables apiladas en un mismo eje de tiempo, para un modelo o la mediana de los modelos elegidos. |
-| **Mapa de estaciones** | Última medición (o lluvia acumulada en las últimas N horas) de cada estación sobre imagen satelital. |
+| **Mapa de estaciones** | Última medición (o lluvia acumulada en las últimas N horas) de cada estación sobre imagen satelital, con los límites comunales. Al elegir una comuna el mapa se acerca a ella, la resalta y la tabla muestra sus estaciones (o la más cercana, si no tiene). |
+| **Mapas de superficie** | *Viento y campos*: el viento de 10 m de un modelo (o la mediana de los 7) animado con partículas ([leaflet-velocity](https://github.com/onaci/leaflet-velocity)) sobre un fondo de viento, ráfaga, temperatura, presión o lluvia. El mapa recibe todas las horas de una vez y se recorre en el navegador (barra de tiempo y ▶), sin recargar la página; el cuadro tiene la proporción de la grilla y no se sale de ella. En las horas pasadas, las estaciones se pintan con lo observado en la misma escala, para compararlas con el modelo. *Rosas de viento*: la rosa de cada modelo junto a la del METAR en las mismas horas (o las de los próximos días), con dirección predominante, velocidad media y error medio de dirección. |
 
 Cada gráfico tiene debajo los botones **PNG** y **PDF** para guardarlo: PNG a doble resolución o PDF
 vectorial, con fondo blanco y la fuente de los datos. La imagen se genera al hacer clic (tarda 2–4 s)
@@ -30,7 +31,9 @@ con [Kaleido](https://github.com/plotly/Kaleido), que usa Chrome: en Streamlit C
 `packages.txt` (`chromium`); en tu computador basta con tener Chrome o Chromium.
 
 Los modelos se consultan en las coordenadas del sitio elegido arriba, en «Sitio» (se puede escribir
-para buscar entre las 72 estaciones).
+para buscar entre las 72 estaciones, por nombre o por comuna). Todos los mapas dibujan los límites de
+las 32 comunas de la región, sobre imagen satelital o sobre un mapa de calles («Mapa base»; la elección
+se mantiene al cambiar de página).
 
 ## La red: 72 sitios
 
@@ -38,9 +41,6 @@ para buscar entre las 72 estaciones).
   lluvia (66), temperatura (55), humedad (46) y viento (10).
 - **METAR SCQP** (aeropuerto La Araucanía, Freire): la única estación de la región que publica METAR,
   y la única fuente pública de ráfagas, dirección del viento y presión. Maquehue (SCTC) ya no informa.
-
-Se agrupan por longitud en **costa** (16, al oeste de 72,85° O, con la cordillera de Nahuelbuta),
-**valle** (29) y **cordillera** (27, al este de 72,1° O).
 
 Control de calidad (verificado el 26/09/2026 con una semana de datos):
 - Se descartan los valores fuera de rango físico (lluvia < 0 o > 40 mm en 30 min, temperatura fuera de
@@ -61,6 +61,8 @@ Control de calidad (verificado el 26/09/2026 con una semana de datos):
 | [Open-Meteo Forecast](https://open-meteo.com/en/docs) | GFS, IFS, ICON, GEM, GSM, UM, ARPEGE | 1–7 días atrás y 1–7 días hacia adelante |
 | [Open-Meteo Ensemble](https://open-meteo.com/en/docs/ensemble-api) | GEFS (31) + IFS-ENS (51) + ICON-EPS (40) + GEPS (21) | ídem |
 | Esri World Imagery | imagen satelital de los mapas y de la portada | — |
+| [OpenStreetMap](https://www.openstreetmap.org/copyright) (© colaboradores de OpenStreetMap) | mapa base de calles | — |
+| [BCN](https://www.bcn.cl/siit/mapas_vectoriales) (división político-administrativa, vía [chile-geojson](https://github.com/caracena/chile-geojson)) | límites comunales (`static/comunas_araucania.geojson`, simplificados a ~400 m) | — |
 
 Advertencias:
 - Observaciones preliminares, sin control de calidad oficial (solo el filtro descrito arriba).
@@ -71,6 +73,10 @@ Advertencias:
 - El super-ensamble se calcula por celdas de 0,5° (ver abajo): estaciones cercanas comparten la misma banda.
 - Es una herramienta de divulgación: no reemplaza los avisos de SENAPRED ni de la DMC.
 - Open-Meteo es gratuito para uso no comercial.
+- Los mapas de superficie usan una grilla de 0,2° (~20 km): no resuelven valles ni lagos, y la cordillera
+  queda suavizada. La dirección del viento observada solo existe en el aeropuerto (METAR); las estaciones
+  VIPNet miden la velocidad pero no la dirección. El METAR informa como «variable» (VRB) el viento débil
+  sin dirección definida: en las rosas cuenta junto con la calma.
 
 ## Cómo se actualizan los pronósticos
 
@@ -97,6 +103,11 @@ pedirlo en los 72 sitios agota el límite horario en una sola corrida. Por eso:
 Una corrida tarda unos 3 minutos: los lotes del ensamble van de a uno, separados por un minuto, para
 no pasar el límite de 600 consultas por minuto.
 
+Al final se baja la **grilla de los mapas de superficie** (`F.grilla`): los 7 modelos en 11 × 15 puntos
+cada 0,2° (de 37,6° a 39,6° S y de 73,6° a 70,8° O), 1 día atrás y 5 adelante, en lotes de 20 puntos
+(~330 consultas en total). Se guarda en `grilla.parquet`; si falla, se publica el resto igual y la app
+intenta la grilla en vivo.
+
 Para forzar una actualización: pestaña *Actions* → *Actualizar pronósticos* → *Run workflow*.
 GitHub pausa las Actions programadas de un repositorio público tras 60 días sin actividad; si pasa,
 basta reactivarla desde la misma pestaña.
@@ -106,14 +117,14 @@ basta reactivarla desde la misma pestaña.
 ```
 app.py                     punto de entrada: st.App que mantiene la caché caliente
 streamlit_app.py           navegación (st.navigation), controles y encabezado
-app_pages/                 una página por vista: presentación, comparar, lluvia, meteograma, mapa
+app_pages/                 una página por vista: presentación, comparar, lluvia, meteograma, mapa, superficie
 comun.py                   cargas con caché y utilidades compartidas por las páginas
 fuentes.py                 descarga y ordena los datos; catálogo de variables, modelos, estaciones y nodos
 actualiza_pronosticos.py   baja los pronósticos de todos los sitios (lo corre la GitHub Action)
 tests/                     pruebas de humo con st.testing.AppTest
 .github/workflows/         Actions: pronósticos cada hora y pruebas en cada push
 .streamlit/                tema, archivos estáticos y configuración de la caché
-static/                    imagen de portada (Esri World Imagery) y logos de MetGeo, servidos en app/static/
+static/                    imagen de portada (Esri World Imagery), logos de MetGeo y límites comunales (GeoJSON)
 requirements.txt           dependencias de Python
 packages.txt               dependencias del sistema en Streamlit Cloud (chromium, para exportar PNG/PDF)
 ```
@@ -137,7 +148,8 @@ vista exacta; por ejemplo
 
 ## Agregar o quitar estaciones
 
-Editar `SITIOS` en `fuentes.py` (`vars` = variables que mide cada una). El catálogo completo de VIPNet
+Editar `SITIOS` en `fuentes.py` (`vars` = variables que mide cada una; `comuna` = la comuna del
+GeoJSON donde cae). El catálogo completo de VIPNet
 sale de `POST https://vipnet.mop.gob.cl/v1/vipnet/estaciones` con `{"tipoEstacion": 0}`; las de
 La Araucanía son las que traen `region` o `regionEstacion` igual a 9. La serie de una estación sale de
 `POST https://vipnet.mop.gob.cl/v1/vipnet/estacion/valores` con
